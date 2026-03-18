@@ -1,6 +1,6 @@
 """Trading strategies package."""
 
-from quant.strategies.mean_reversion import mean_reversion_strategy, calculate_metrics
+from quant.strategies.mean_reversion import calculate_metrics, mean_reversion_strategy
 from quant.strategies.mean_reversion_polymarket import mean_reversion_polymarket
 from quant.strategies.momentum import momentum_strategy
 

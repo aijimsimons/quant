@@ -9,13 +9,18 @@ import polars as pl
 
 # Generate 30 days of data
 data_pd = generate_minute_bars(n_days=30)
-data = pl.from_pandas(data_pd).lazy()
+data = pl.from_pandas(data_pd)
 
 print(f"Generating {len(data_pd)} rows of 30-day minute data...")
 print(f"Date range: {data_pd['timestamp'].min()} to {data_pd['timestamp'].max()}")
 
 results = mean_reversion_strategy(data, capital=10000.0)
-results_df = results.collect()
+
+# Handle both LazyFrame and DataFrame
+if isinstance(results, pl.LazyFrame):
+    results_df = results.collect()
+else:
+    results_df = results
 
 metrics = calculate_metrics(results_df, capital=10000.0)
 

@@ -6,6 +6,7 @@ from infrastructure.execution import ExecutionClient, Order
 from infrastructure.risk import RiskManager, PositionLimit
 from infrastructure.paper_trading import PaperTradingEngine, PaperOrder
 from infrastructure.polymarket import PolymarketClient, PaperPolymarketClient
+from infrastructure.simulation import SimulatedPolymarketClient, generate_polymarket_price_data
 
 __all__ = [
     "generate_minute_bars",
@@ -20,4 +21,6 @@ __all__ = [
     "PaperOrder",
     "PolymarketClient",
     "PaperPolymarketClient",
+    "SimulatedPolymarketClient",
+    "generate_polymarket_price_data",
 ]

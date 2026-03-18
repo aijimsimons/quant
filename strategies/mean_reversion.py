@@ -15,12 +15,13 @@ The strategy works because:
 """
 
 import polars as pl
+import pandas as pd
 import numpy as np
-from typing import Optional
+from typing import Optional, Union
 
 
 def mean_reversion_strategy(
-    data: pl.LazyFrame,
+    data: Union[pl.LazyFrame, pl.DataFrame, pd.DataFrame],
     capital: float = 10000.0,
     window: int = 20,
     std_multiplier: float = 2.0,
@@ -29,7 +30,7 @@ def mean_reversion_strategy(
     take_profit_pct: float = 0.025,
     max_holding_period: int = 60,
     verbose: bool = False,
-) -> pl.LazyFrame:
+) -> Union[pl.LazyFrame, pl.DataFrame]:
     """
     Enhanced mean reversion strategy.
     
@@ -41,7 +42,13 @@ def mean_reversion_strategy(
     - Stop loss or take profit
     - Maximum holding period
     """
-    df = data
+    # Convert to polars if needed
+    if isinstance(data, pd.DataFrame):
+        df = pl.from_pandas(data).lazy()
+    elif isinstance(data, pl.DataFrame):
+        df = data.lazy()
+    else:
+        df = data
     
     # Calculate Bollinger Bands
     df = df.with_columns([
@@ -60,10 +67,10 @@ def mean_reversion_strategy(
         ((pl.col('close') - pl.col('sma')) / pl.col('std')).alias('zscore'),
     ])
     
-    # Generate signals with momentum confirmation
+    # Generate signals
     df = df.with_columns([
-        pl.when((pl.col('zscore') < -1.0) & (pl.col('zscore') < pl.col('zscore').shift(1))).then(pl.lit(1))
-        .when((pl.col('zscore') > 1.0) & (pl.col('zscore') > pl.col('zscore').shift(1))).then(pl.lit(-1))
+        pl.when(pl.col('zscore') < -1.0).then(pl.lit(1))
+        .when(pl.col('zscore') > 1.0).then(pl.lit(-1))
         .otherwise(pl.lit(0)).alias('signal')
     ])
     
@@ -154,11 +161,15 @@ def mean_reversion_strategy(
         (pl.lit(1) + pl.col('returns')).cum_prod().alias('cumulative_returns'),
     ])
     
-    return df_eager.lazy()
+    return df_eager
 
 
-def calculate_metrics(df: pl.DataFrame, capital: float = 10000.0) -> dict:
+def calculate_metrics(df: Union[pl.DataFrame, pd.DataFrame], capital: float = 10000.0) -> dict:
     """Calculate strategy performance metrics."""
+    # Convert to polars if needed
+    if isinstance(df, pd.DataFrame):
+        df = pl.from_pandas(df)
+    
     returns = df['returns'].drop_nulls()
     
     if len(returns) == 0 or returns.std() == 0:

@@ -1,12 +1,12 @@
 """Mean reversion strategy using Bollinger Bands."""
 
-import pandas as pd
+import polars as pl
 import numpy as np
 from typing import Optional
 
 
 def mean_reversion_strategy(
-    data: pd.DataFrame,
+    data: pl.LazyFrame,
     capital: float = 10000.0,
     window: int = 20,
     std_multiplier: float = 2.0,
@@ -15,7 +15,7 @@ def mean_reversion_strategy(
     take_profit_pct: float = 0.025,
     max_holding_period: int = 60,
     verbose: bool = False,
-) -> pd.DataFrame:
+) -> pl.LazyFrame:
     """
     Mean reversion strategy using Bollinger Bands.
     
@@ -27,48 +27,60 @@ def mean_reversion_strategy(
     - Stop loss or take profit
     - Maximum holding period
     """
-    df = data.copy()
+    df = data
     
     # Calculate Bollinger Bands
-    df['sma'] = df['close'].rolling(window=window).mean()
-    df['std'] = df['close'].rolling(window=window).std()
-    df['upper_band'] = df['sma'] + std_multiplier * df['std']
-    df['lower_band'] = df['sma'] - std_multiplier * df['std']
+    df = df.with_columns([
+        pl.col('close').rolling_mean(window).alias('sma'),
+        pl.col('close').rolling_std(window).alias('std'),
+    ])
+    
+    # Calculate upper/lower bands
+    df = df.with_columns([
+        (pl.col('sma') + std_multiplier * pl.col('std')).alias('upper_band'),
+        (pl.col('sma') - std_multiplier * pl.col('std')).alias('lower_band'),
+    ])
     
     # Calculate Z-score
-    df['zscore'] = (df['close'] - df['sma']) / df['std']
+    df = df.with_columns([
+        ((pl.col('close') - pl.col('sma')) / pl.col('std')).alias('zscore'),
+    ])
     
     # Generate signals
-    df['signal'] = 0
-    df.loc[df['zscore'] < -1.0, 'signal'] = 1  # Long
-    df.loc[df['zscore'] > 1.0, 'signal'] = -1  # Short
+    df = df.with_columns([
+        pl.when(pl.col('zscore') < -1.0).then(pl.lit(1))
+        .when(pl.col('zscore') > 1.0).then(pl.lit(-1))
+        .otherwise(pl.lit(0)).alias('signal')
+    ])
     
-    # Pre-allocate arrays
-    n = len(df)
+    # For backtesting with position tracking, we need to collect to DataFrame
+    df_eager = df.collect()
+    
+    # Convert to numpy for efficient position tracking
+    n = len(df_eager)
     positions = np.zeros(n, dtype=np.float64)
     entry_prices = np.zeros(n, dtype=np.float64)
     entry_times = np.zeros(n, dtype=np.float64)
     pnl = np.zeros(n, dtype=np.float64)
     
-    # Strategy state
     position = 0
     entry_price = 0.0
     entry_time = 0
     
     for i in range(window, n):
         if position == 0:
-            if df.loc[i, 'signal'] == 1:
+            if df_eager['signal'][i] == 1:
                 position_value = capital * position_size_pct
-                price = df.loc[i, 'close']
+                price = df_eager['close'][i]
                 position = max(1, int(position_value / price))
                 entry_price = price
                 entry_time = i
                 if verbose:
                     print(f"   Entry LONG at i={i}, price={entry_price:.2f}, position={position}")
                 
-            elif df.loc[i, 'signal'] == -1:
+            elif df_eager['signal'][i] == -1:
                 position_value = capital * position_size_pct
-                price = df.loc[i, 'close']
+                price = df_eager['close'][i]
                 position = -max(1, int(position_value / price))
                 entry_price = price
                 entry_time = i
@@ -76,25 +88,22 @@ def mean_reversion_strategy(
                     print(f"   Entry SHORT at i={i}, price={entry_price:.2f}, position={position}")
                 
         else:
-            current_price = df.loc[i, 'close']
+            current_price = df_eager['close'][i]
             pnl_per_unit = current_price - entry_price if position > 0 else entry_price - current_price
             current_pnl = pnl_per_unit * abs(position)
             
-            # Stop loss
             if current_pnl <= -capital * stop_loss_pct:
                 positions[i] = 0
                 pnl[i] = current_pnl
                 position = 0
                 entry_price = 0.0
                 
-            # Take profit
             elif current_pnl >= capital * take_profit_pct:
                 positions[i] = 0
                 pnl[i] = current_pnl
                 position = 0
                 entry_price = 0.0
                 
-            # Max holding period
             elif i - entry_time >= max_holding_period:
                 positions[i] = 0
                 pnl[i] = current_pnl
@@ -106,24 +115,37 @@ def mean_reversion_strategy(
                 entry_prices[i] = entry_price
                 entry_times[i] = float(entry_time)
     
-    # Assign to DataFrame
-    df['position'] = positions
-    df['entry_price'] = entry_prices
-    df['entry_time'] = entry_times
-    df['pnl'] = pnl
+    # Add results to DataFrame
+    df_eager = df_eager.with_columns([
+        pl.Series('position', positions),
+        pl.Series('entry_price', entry_prices),
+        pl.Series('entry_time', entry_times),
+        pl.Series('pnl', pnl),
+    ])
     
-    # Calculate metrics
-    df['cumulative_pnl'] = df['pnl'].cumsum()
-    df['equity'] = capital + df['cumulative_pnl']
-    df['returns'] = df['equity'].pct_change()
-    df['cumulative_returns'] = (1 + df['returns']).cumprod()
+    # Calculate metrics using polars
+    df_eager = df_eager.with_columns([
+        pl.col('pnl').cum_sum().alias('cumulative_pnl'),
+    ])
     
-    return df
+    df_eager = df_eager.with_columns([
+        (pl.lit(capital) + pl.col('cumulative_pnl')).alias('equity'),
+    ])
+    
+    df_eager = df_eager.with_columns([
+        pl.col('equity').pct_change().alias('returns'),
+    ])
+    
+    df_eager = df_eager.with_columns([
+        (pl.lit(1) + pl.col('returns')).cum_prod().alias('cumulative_returns'),
+    ])
+    
+    return df_eager.lazy()
 
 
-def calculate_metrics(df: pd.DataFrame, capital: float = 10000.0) -> dict:
+def calculate_metrics(df: pl.DataFrame, capital: float = 10000.0) -> dict:
     """Calculate strategy performance metrics."""
-    returns = df['returns'].dropna()
+    returns = df['returns'].drop_nulls()
     
     if len(returns) == 0 or returns.std() == 0:
         sharpe = 0.0
@@ -131,13 +153,13 @@ def calculate_metrics(df: pd.DataFrame, capital: float = 10000.0) -> dict:
         sharpe = (returns.mean() / returns.std()) * (252 * 24) ** 0.5
     
     equity = df['equity']
-    rolling_max = equity.cummax()
+    rolling_max = equity.cum_max()
     drawdown = (rolling_max - equity) / rolling_max
     max_dd = drawdown.max() if len(drawdown) > 1 else 0
     
-    wins = df[df['pnl'] > 0]['pnl']
-    losses = df[df['pnl'] < 0]['pnl']
-    win_rate = len(wins) / len(df[df['pnl'] != 0]) if len(df[df['pnl'] != 0]) > 0 else 0
+    wins = df.filter(pl.col('pnl') > 0)['pnl']
+    losses = df.filter(pl.col('pnl') < 0)['pnl']
+    win_rate = len(wins) / len(df.filter(pl.col('pnl') != 0)) if len(df.filter(pl.col('pnl') != 0)) > 0 else 0
     profit_factor = abs(wins.sum() / losses.sum()) if len(losses) > 0 and losses.sum() != 0 else float('inf')
     
     position_changes = df['position'].diff().abs().sum()
@@ -147,7 +169,7 @@ def calculate_metrics(df: pd.DataFrame, capital: float = 10000.0) -> dict:
     avg_loss = losses.mean() if len(losses) > 0 else 0.0
     
     return {
-        'total_return': (equity.iloc[-1] - capital) / capital if len(equity) > 1 else 0,
+        'total_return': (equity[-1] - capital) / capital if len(equity) > 1 else 0,
         'sharpe_ratio': sharpe,
         'max_drawdown': max_dd,
         'win_rate': win_rate,

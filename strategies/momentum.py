@@ -19,10 +19,6 @@ def momentum_strategy(
 ) -> pd.DataFrame:
     """
     Momentum breakout strategy using MA crossover and volume confirmation.
-    
-    Entries:
-    - Long when price > slow MA, fast MA > slow MA, high volume
-    - Short when price < slow MA, fast MA < slow MA, high volume
     """
     df = data.copy()
     

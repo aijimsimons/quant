@@ -11,9 +11,7 @@ def generate_minute_bars(
     drift: float = 0.00005,
     minutes_per_day: int = 1440,
 ) -> pd.DataFrame:
-    """
-    Generate realistic minute-by-minute price data with volatility clustering.
-    """
+    """Generate realistic minute-by-minute price data with volatility clustering."""
     np.random.seed(42)
     
     n_minutes = n_days * minutes_per_day

@@ -1,6 +1,6 @@
 """Trading strategies package."""
 
-from quant.strategies.mean_reversion import mean_reversion_strategy, calculate_metrics
-from quant.strategies.momentum import momentum_strategy
+from strategies.mean_reversion import mean_reversion_strategy, calculate_metrics
+from strategies.momentum import momentum_strategy
 
 __all__ = ["mean_reversion_strategy", "calculate_metrics", "momentum_strategy"]

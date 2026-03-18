@@ -1,0 +1,26 @@
+{
+  "best_params": {
+    "window": 40,
+    "std_multiplier": 2.5,
+    "stop_loss_pct": 0.015,
+    "take_profit_pct": 0.02,
+    "max_holding_period": 120
+  },
+  "train_metrics": {
+    "total_return": 1.549,
+    "sharpe_ratio": 0.39,
+    "max_drawdown": 0.1642,
+    "win_rate": 0.5268
+  },
+  "val_metrics": {
+    "total_return": 0.2124410000000007,
+    "sharpe_ratio": 0.5319614228903714,
+    "max_drawdown": 0.05649864509287942,
+    "win_rate": 0.5558086560364465,
+    "profit_factor": 1.2576382142956777,
+    "total_trades": 439,
+    "avg_win": 42.50049180327865,
+    "avg_loss": -42.285692307692216
+  },
+  "status": "PAPER_TRADING"
+}

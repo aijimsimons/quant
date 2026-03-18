@@ -1,0 +1,31 @@
+{
+  "best_params_from_2022": {
+    "window": 40,
+    "std_multiplier": 2.5,
+    "stop_loss_pct": 0.015,
+    "take_profit_pct": 0.02,
+    "max_holding_period": 120
+  },
+  "2022_train_metrics": {
+    "total_return": 1.549,
+    "sharpe_ratio": 0.39,
+    "max_drawdown": 0.1642,
+    "win_rate": 0.5268
+  },
+  "2022_val_metrics": {
+    "total_return": 0.2124,
+    "sharpe_ratio": 0.53,
+    "max_drawdown": 0.0565,
+    "win_rate": 0.5558
+  },
+  "2026_val_metrics": {
+    "total_return": -0.23116000000001077,
+    "sharpe_ratio": 0.10276247587112321,
+    "max_drawdown": 0.6366294528734544,
+    "win_rate": 0.45,
+    "profit_factor": 0.9772982947696011,
+    "total_trades": 890,
+    "avg_win": 235.25614657210383,
+    "avg_loss": -196.95348162475827
+  }
+}

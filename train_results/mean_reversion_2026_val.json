@@ -1,0 +1,30 @@
+{
+  "best_params": {
+    "window": 15,
+    "std_multiplier": 1.0,
+    "stop_loss_pct": 0.01,
+    "take_profit_pct": 0.02,
+    "max_holding_period": 20
+  },
+  "train_metrics": {
+    "total_return": 0.9236350000000406,
+    "sharpe_ratio": 0.31146506785279243,
+    "max_drawdown": 0.4333712847116661,
+    "win_rate": 0.4456048738033072,
+    "profit_factor": 1.0178607959189212,
+    "total_trades": 6308,
+    "avg_win": 171.3431510416668,
+    "avg_loss": -135.30345630559916
+  },
+  "val_metrics": {
+    "total_return": -0.8949690000000264,
+    "sharpe_ratio": 0.42418434542301026,
+    "max_drawdown": 1.0071302972962455,
+    "win_rate": 0.42730496453900707,
+    "profit_factor": 0.9293040289568069,
+    "total_trades": 1587,
+    "avg_win": 162.71697095435678,
+    "avg_loss": -130.64402476780208
+  },
+  "status": "REVIEW_NEEDED"
+}

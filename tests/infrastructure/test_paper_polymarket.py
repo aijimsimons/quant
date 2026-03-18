@@ -1,13 +1,11 @@
 """Test Simulated Polymarket paper trading."""
 
-import sys
 import os
-
-os.chdir('/Users/xingjianliu/jim/quant')
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import directly
-from infrastructure.simulation import SimulatedPolymarketClient
-from strategies.mean_reversion import mean_reversion_strategy, calculate_metrics
+from quant.infrastructure.simulation import SimulatedPolymarketClient
+from quant.strategies.mean_reversion import mean_reversion_strategy, calculate_metrics
 import polars as pl
 
 # Initialize simulated Polymarket client

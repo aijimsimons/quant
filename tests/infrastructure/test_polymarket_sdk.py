@@ -3,8 +3,8 @@
 import sys
 sys.path.insert(0, '/Users/xingjianliu/jim/quant')
 
-from strategies.mean_reversion import mean_reversion_strategy, calculate_metrics
-from infrastructure.data.generator import generate_minute_bars
+from quant.strategies.mean_reversion import mean_reversion_strategy, calculate_metrics
+from quant.infrastructure.data.generator import generate_minute_bars
 import polars as pl
 
 # Generate 5-minute data for 30 days
@@ -26,7 +26,11 @@ results = mean_reversion_strategy(
     max_holding_period=20,  # 20 five-minute bars = 100 minutes
 )
 
-results_df = results.collect()
+# Handle both LazyFrame and DataFrame
+if isinstance(results, pl.LazyFrame):
+    results_df = results.collect()
+else:
+    results_df = results
 
 metrics = calculate_metrics(results_df, capital=10000.0)
 

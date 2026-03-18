@@ -8,6 +8,9 @@ Implements proper train/validation/test split for hyperparameter tuning:
 This prevents data leakage and overfitting.
 """
 
+from datetime import datetime
+
+import pandas as pd
 import polars as pl
 
 from quant.infrastructure.data.real_data import generate_historical_polymarket_data
@@ -22,13 +25,13 @@ def train_validation_test_split(
 ) -> tuple:
     """
     Split data into train/validation/test sets.
-    
+
     Args:
         data: DataFrame with OHLCV data
         train_ratio: Proportion for training
         val_ratio: Proportion for validation
         test_ratio: Proportion for testing
-        
+
     Returns:
         Tuple of (train_df, val_df, test_df)
     """
@@ -53,28 +56,24 @@ def run_train_validation_test_pipeline(
 ) -> dict:
     """
     Run the complete train/validation/test pipeline.
-    
+
     Steps:
     1. Generate historical data (2024-2025)
     2. Split into train/val/test
     3. Hyperparameter tuning on TRAIN set
     4. Single run on VALIDATION set (no further tuning)
     5. Final evaluation on TEST set
-    
+
     Args:
         n_days: Total days of data
         train_ratio: Training proportion
         val_ratio: Validation proportion
         test_ratio: Test proportion
         verbose: Print progress
-        
+
     Returns:
         Dictionary with all metrics
     """
-    from datetime import datetime
-
-    import pandas as pd
-
     today = datetime.now()
     end_date = today.strftime("%Y-%m-%d")
     start_date = (today - pd.Timedelta(days=n_days)).strftime("%Y-%m-%d")
@@ -101,9 +100,9 @@ def run_train_validation_test_pipeline(
 
     if verbose:
         print("\nData split:")
-        print(f"  Train:   {len(train_df)} rows ({train_ratio*100:.1f}%)")
-        print(f"  Val:     {len(val_df)} rows ({val_ratio*100:.1f}%)")
-        print(f"  Test:    {len(test_df)} rows ({test_ratio*100:.1f}%)")
+        print(f"  Train:   {len(train_df)} rows ({train_ratio * 100:.1f}%)")
+        print(f"  Val:     {len(val_df)} rows ({val_ratio * 100:.1f}%)")
+        print(f"  Test:    {len(test_df)} rows ({test_ratio * 100:.1f}%)")
 
     # ==================== STEP 1: HYPERPARAMETER TUNING ON TRAIN SET ====================
     if verbose:
@@ -113,7 +112,7 @@ def run_train_validation_test_pipeline(
 
     # Grid search for optimal parameters on training data
     best_params = None
-    best_sharpe = -float('inf')
+    best_sharpe = -float("inf")
 
     window_options = [15, 20, 25, 30]
     std_options = [1.0, 1.5, 2.0]
@@ -136,13 +135,13 @@ def run_train_validation_test_pipeline(
 
             metrics = calculate_metrics(results, capital=10000.0)
 
-            if metrics['sharpe_ratio'] > best_sharpe:
-                best_sharpe = metrics['sharpe_ratio']
+            if metrics["sharpe_ratio"] > best_sharpe:
+                best_sharpe = metrics["sharpe_ratio"]
                 best_params = {
-                    'window': window,
-                    'std_multiplier': std_mult,
-                    'min_zscore': -1.2,
-                    'max_zscore': 1.1,
+                    "window": window,
+                    "std_multiplier": std_mult,
+                    "min_zscore": -1.2,
+                    "max_zscore": 1.1,
                 }
 
     if verbose:
@@ -161,10 +160,10 @@ def run_train_validation_test_pipeline(
     results_val = mean_reversion_polymarket(
         val_polars,
         capital=10000.0,
-        window=best_params['window'],
-        std_multiplier=best_params['std_multiplier'],
-        min_zscore=best_params['min_zscore'],
-        max_zscore=best_params['max_zscore'],
+        window=best_params["window"],
+        std_multiplier=best_params["std_multiplier"],
+        min_zscore=best_params["min_zscore"],
+        max_zscore=best_params["max_zscore"],
         verbose=False,
     )
 
@@ -172,10 +171,10 @@ def run_train_validation_test_pipeline(
 
     if verbose:
         print("Validation Metrics:")
-        print(f"  Total Return: {val_metrics['total_return']*100:+.2f}%")
+        print(f"  Total Return: {val_metrics['total_return'] * 100:+.2f}%")
         print(f"  Sharpe Ratio: {val_metrics['sharpe_ratio']:.2f}")
-        print(f"  Max Drawdown: {val_metrics['max_drawdown']*100:+.2f}%")
-        print(f"  Win Rate: {val_metrics['win_rate']*100:.2f}%")
+        print(f"  Max Drawdown: {val_metrics['max_drawdown'] * 100:+.2f}%")
+        print(f"  Win Rate: {val_metrics['win_rate'] * 100:.2f}%")
         print(f"  Profit Factor: {val_metrics['profit_factor']:.2f}")
 
     # Decision: Go to paper trading or discard?
@@ -185,9 +184,9 @@ def run_train_validation_test_pipeline(
     max_drawdown = 0.10
 
     if (
-        val_metrics['sharpe_ratio'] >= min_sharpe and
-        val_metrics['win_rate'] >= min_win_rate and
-        val_metrics['max_drawdown'] <= max_drawdown
+        val_metrics["sharpe_ratio"] >= min_sharpe
+        and val_metrics["win_rate"] >= min_win_rate
+        and val_metrics["max_drawdown"] <= max_drawdown
     ):
         if verbose:
             print("\n✅ VALIDATION PASSED - Proceed to Paper Trading")
@@ -202,10 +201,10 @@ def run_train_validation_test_pipeline(
         results_test = mean_reversion_polymarket(
             test_polars,
             capital=10000.0,
-            window=best_params['window'],
-            std_multiplier=best_params['std_multiplier'],
-            min_zscore=best_params['min_zscore'],
-            max_zscore=best_params['max_zscore'],
+            window=best_params["window"],
+            std_multiplier=best_params["std_multiplier"],
+            min_zscore=best_params["min_zscore"],
+            max_zscore=best_params["max_zscore"],
             verbose=False,
         )
 
@@ -213,31 +212,37 @@ def run_train_validation_test_pipeline(
 
         if verbose:
             print("Test Metrics:")
-            print(f"  Total Return: {test_metrics['total_return']*100:+.2f}%")
+            print(f"  Total Return: {test_metrics['total_return'] * 100:+.2f}%")
             print(f"  Sharpe Ratio: {test_metrics['sharpe_ratio']:.2f}")
-            print(f"  Max Drawdown: {test_metrics['max_drawdown']*100:+.2f}%")
-            print(f"  Win Rate: {test_metrics['win_rate']*100:.2f}%")
+            print(f"  Max Drawdown: {test_metrics['max_drawdown'] * 100:+.2f}%")
+            print(f"  Win Rate: {test_metrics['win_rate'] * 100:.2f}%")
             print(f"  Profit Factor: {test_metrics['profit_factor']:.2f}")
             print("\n✅ Strategy ready for Paper Trading")
 
         return {
-            'best_params': best_params,
-            'train_metrics': None,  # Not returned - used for tuning only
-            'val_metrics': val_metrics,
-            'test_metrics': test_metrics,
-            'status': 'PAPER_TRADING',
+            "best_params": best_params,
+            "train_metrics": None,  # Not returned - used for tuning only
+            "val_metrics": val_metrics,
+            "test_metrics": test_metrics,
+            "status": "PAPER_TRADING",
         }
     else:
         if verbose:
             print("\n❌ VALIDATION FAILED - Strategy Discarded")
             print(f"  Required Sharpe: >= {min_sharpe} (got {val_metrics['sharpe_ratio']:.2f})")
-            print(f"  Required Win Rate: >= {min_win_rate*100:.0f}% (got {val_metrics['win_rate']*100:.2f}%)")
-            print(f"  Max Drawdown: <= {max_drawdown*100:.0f}% (got {val_metrics['max_drawdown']*100:+.2f}%)")
+            print(
+                f"  Required Win Rate: >= {min_win_rate * 100:.0f}% "
+                f"(got {val_metrics['win_rate'] * 100:.2f}%)"  # noqa: E501
+            )
+            print(
+                f"  Max Drawdown: <= {max_drawdown * 100:.0f}% "
+                f"(got {val_metrics['max_drawdown'] * 100:+.2f}%)"  # noqa: E501
+            )
 
         return {
-            'best_params': best_params,
-            'val_metrics': val_metrics,
-            'status': 'DISCARDED',
+            "best_params": best_params,
+            "val_metrics": val_metrics,
+            "status": "DISCARDED",
         }
 
 
@@ -254,6 +259,6 @@ if __name__ == "__main__":
     print("FINAL RESULTS")
     print("=" * 60)
     print(f"Status: {results['status']}")
-    if results['status'] == 'PAPER_TRADING':
+    if results["status"] == "PAPER_TRADING":
         print(f"Best Params: {results['best_params']}")
         print(f"Test Metrics: {results['test_metrics']}")

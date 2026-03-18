@@ -1,33 +1,16 @@
-"""Debug Bitcoin data for mean reversion."""
-
-import sys
-sys.path.insert(0, '/Users/xingjianliu/jim/quant')
-
 from quant.infrastructure.data.real_data import load_bitcoin_ohlcv_csv
+from quant.strategies.mean_reversion_bitcoin import mean_reversion_bitcoin, calculate_metrics
 import polars as pl
 
 btc_df = load_bitcoin_ohlcv_csv()
-data = pl.from_pandas(btc_df)
+data_polars = pl.from_pandas(btc_df)
 
-# Calculate Bollinger Bands
-data = data.with_columns([
-    pl.col('close').rolling_mean(20).alias('sma'),
-    pl.col('close').rolling_std(20).alias('std'),
-])
-data = data.with_columns([
-    ((pl.col('close') - pl.col('sma')) / pl.col('std')).alias('zscore'),
-])
+# Run with default params
+results = mean_reversion_bitcoin(data_polars, capital=10000.0, verbose=False)
+print('Full results:')
+print(results)
 
-# Check zscore values
-print('Z-score statistics:')
-zscore_data = data.select([
-    pl.col('zscore').min().alias('min'),
-    pl.col('zscore').max().alias('max'),
-    pl.col('zscore').mean().alias('mean'),
-    pl.col('zscore').std().alias('std'),
-])
-print(zscore_data)
-
-# Check signal values
-print('\nFirst 25 rows:')
-print(data.select(['timestamp', 'close', 'sma', 'std', 'zscore']).head(25))
+metrics = calculate_metrics(results, capital=10000.0)
+print('\nMetrics:')
+for k, v in metrics.items():
+    print(f'  {k}: {v}')

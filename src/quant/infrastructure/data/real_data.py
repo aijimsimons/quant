@@ -296,3 +296,56 @@ def generate_multiple_market_scenarios(
     )
     
     return scenarios
+
+
+def load_bitcoin_1min_csv(filepath: str = None) -> pd.DataFrame:
+    """
+    Load Bitcoin 1-minute OHLCV data from CSV file.
+
+    Args:
+        filepath: Path to CSV file. Defaults to data/btc_1min_2022_2026.csv
+
+    Returns:
+        DataFrame with 1-minute OHLCV data
+    """
+    if filepath is None:
+        # Try multiple possible locations
+        possible_paths = [
+            "/Users/xingjianliu/jim/quant/data/btc_1min_2022_2026.csv",
+            "/Users/xingjianliu/jim/quant/src/quant/infrastructure/data/../data/btc_1min_2022_2026.csv",
+            os.path.join(os.path.expanduser("~"), ".hermes", "quant_data", "btc_1min_2022_2026.csv"),
+        ]
+
+        for p in possible_paths:
+            if os.path.exists(p):
+                filepath = p
+                break
+
+    if filepath is None:
+        raise FileNotFoundError(
+            "Bitcoin 1-minute data not found. Please run fetch_bitcoin_1min_comprehensive.py first."
+        )
+
+    if os.path.exists(filepath):
+        df = pd.read_csv(filepath)
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        return df
+
+    raise FileNotFoundError(f"Bitcoin 1-minute data not found at {filepath}")
+
+
+def get_bitcoin_1min_data() -> pd.DataFrame:
+    """
+    Get Bitcoin 1-minute data - loads from cached file or fetches fresh data.
+
+    Returns:
+        DataFrame with 1-minute OHLCV data
+    """
+    # Try to load from cache first
+    try:
+        return load_bitcoin_1min_csv()
+    except FileNotFoundError:
+        print("1-minute data not found in cache.")
+        print("Please run fetch_bitcoin_1min_comprehensive.py to generate the data.")
+        raise
+
